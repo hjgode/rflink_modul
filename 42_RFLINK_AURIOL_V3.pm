@@ -27,7 +27,8 @@ RFLINK_AURIOL_V3_Initialize($)
 {
   my ($hash) = @_;
   
-  #    20;CB;Auriol V3;ID=8202;TEMP=8.0;HUM=97;
+  #    20;CB;Auriol V3;ID=8202;TEMP=8.0;HUM=97; -> chn 2
+  #    Auriol_V3_EB02 -> chn 2
   
   $hash->{Match}     = "^[0-9]{2};[0-9A-F]{2};Auriol_V3;.";
   $hash->{DefFn}     = "RFLINK_AURIOL_V3_Define";
@@ -99,14 +100,14 @@ sub parse_RFLINK_AURIOL_V3_msg {
 
   $name =~ s/ /_/; # replace blanks inside name
 
-  my $id=$x[4];
+  my $id=$x[4]; # randomID, changes with every battery change, use only channel info byte 2
   my $tmp= $x[6]; #( hex($x[6]) & hex("7FFF") * 0.1 );
   my $hum=sprintf("%X", $x[8]); # $x[8];
   my $bat=""; #no bat for Auriol V3
   # try to get the device with the name
   my $myName = $name . $id;
 
-  my $chn = ""; #no chn for Auriol V3
+  my $chn = substr($id,2,2); #chn for Auriol V3
   
   return ($name,$id,$tmp,$hum,$bat,$chn);
 }
@@ -137,7 +138,8 @@ RFLINK_AURIOL_V3_Parse($$)
   # 0x1E        Thermo/hygro-sensor
   my $sensorTyp="Thermo/hygro-sensor";
 
-  $sensorname = $sensorname . "_" . $id;
+  #FIXED: do not use randomID, if not longIDs
+  $sensorname = $sensorname . "_" . $chn;
 
   # Get longid setting from IO_Device
   my $model= "RFLINK_AURIOL_V3";
@@ -146,8 +148,8 @@ RFLINK_AURIOL_V3_Parse($$)
   if ( ($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/x)))
   {
     Debug("RFLINK_AURIOL_V3: longids = $longids");
-    if ( length($chn) > 0) {
-      $sensorname .= "_" . $chn; # add chn if longids is set in iodevice
+    if ( length($id) > 0) {
+      $sensorname .= "_" . $id; # add id if longids is set in iodevice
     }
   }else{
     Debug("RFLINK_AURIOL_V3: longids is not set or used");

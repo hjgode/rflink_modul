@@ -95,15 +95,30 @@ sub parse_RFLINK_CRESTA_msg {
   Debug("RFLINK_CRESTA: parsed to: $out");
   # TODO: DEBUG>RFLINK: parsed to: 0:20, 1:8D, 2:Cresta, 3:ID, 4:2001, 5:TEMP, 6:9.7, 7:HUM, 8:130, 9:BAT, 10:LOW, 11:, 
 
+  # byte 1
+  #0x20-0x3f     Sensor Chn 1
+  #0x40-0x5f     Sensor Chn 2
+  #0x60-0x7f     Sensor Chn 3
+  #0xA0-0xbf     Sensor Chn 4
+  #0x80-0x9F     Rain or UV or Anemometer Sensor
+  #0xC0-0xdf     Sensor Chn 5
+  #Cresta_8401    Chn 4
+
   my $name=$x[2];
   my $id=$x[4];
+  my $chn = ""; #extract  chn for Cresta
+  if ( $id eq "8401" ) {
+    $chn="04";
+  }else{
+    $chn = substr($id,2,2);
+  }
+  
   my $tmp= $x[6]; #( hex($x[6]) & hex("7FFF") * 0.1 );
   my $hum=sprintf("%X", $x[8]); # $x[8];
   my $bat=$x[10];
   # try to get the device with the name
-  my $myName = $name . $id;
+  my $myName = $name . $chn;
 
-  my $chn = ""; #no chn for Cresta
   
   return ($name,$id,$tmp,$hum,$bat,$chn);
 }
@@ -135,7 +150,7 @@ RFLINK_CRESTA_Parse($$)
   # 0x1E        Thermo/hygro-sensor
   my $sensorTyp="Thermo/hygro-sensor";
 
-  $sensorname = $sensorname . "_" . $id;
+  $sensorname = $sensorname . "_" . $chn;
 
   # Get longid setting from IO_Device
   my $model= "RFLINK_CRESTA";
@@ -144,8 +159,8 @@ RFLINK_CRESTA_Parse($$)
   if ( ($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/x)))
   {
     Debug("RFLINK_Cresta: longids = $longids");
-    if ( length($chn) > 0) {
-      $sensorname .= "_" . $chn; # add chn if longids is set in iodevice
+    if ( length($id) > 0) {
+      $sensorname .= "_" . $id; # add chn if longids is set in iodevice
     }
   }else{
     Debug("RFLINK_Cresta: longids is not set or used");
