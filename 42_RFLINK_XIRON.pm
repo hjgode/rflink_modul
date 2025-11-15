@@ -139,7 +139,7 @@ RFLINK_XIRON_Parse($$)
   # 0x1E        Thermo/hygro-sensor
   my $sensorTyp="Thermo/hygro-sensor";
 
-  $sensorname = $sensorname . "_" . $id;
+  $sensorname = $sensorname . "_" . $chn;
 
   # Get longid setting from IO_Device
   my $model= "RFLINK_XIRON";
@@ -148,8 +148,8 @@ RFLINK_XIRON_Parse($$)
   if ( ($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/x)))
   {
     Debug("RFLINK: longids = $longids");
-    if ( length($chn) > 0) {
-      $sensorname .= "_" . $chn; # add chn if longids is set in iodevice
+    if ( length($id) > 0) {
+      $sensorname .= "_" . $id; # add chn if longids is set in iodevice
     }
   }else{
     Debug("RFLINK: longids is not set or used");
