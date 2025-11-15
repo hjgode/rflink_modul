@@ -1,0 +1,50 @@
+Für channel RandomID aus ID rausrechnen
+
+Hideki_30_1   AussenTH
+Hideki_30_2   SchlafTH
+Hideki_30_3   AndreasTH
+Hideki_30_4   BadTH
+
+Cresta_2001:temperature 12.5  2025-11-11 15:56:35   Aussen
+Cresta_4102:temperature 14.6  2025-11-11 15:56:19   Schlafzimmer?
+Cresta_4C02:temperature 15.2  2025-11-07 20:11:10   Schlafzimmer
+Cresta_7903:temperature 14.1  2025-11-11 15:53:43   Andreas
+Cresta_8401:temperature 19.0  2025-11-11 15:53:53   Bad
+
+
+
+Cresta/Hideki
+
+Byte 1
+0x20-0x3f     Sensor Chn 1
+0x40-0x5f     Sensor Chn 2
+0x60-0x7f     Sensor Chn 3
+0xA0-0xbf     Sensor Chn 4
+0x80-0x9F     Rain or UV or Anemometer Sensor
+0xC0-0xdf     Sensor Chn 5
+
+Byte 3 & 0x1f -> Sensor type
+0x0c  Anemometer
+0x0d  UV
+0x0e  Rain
+0x1e  Thermo/Hygro
+
+Cresta_2001   13.6C / 74 % - 2025-11-14 13:12:37 - Aussen
+  Hideki_30_1
+  
+Cresta_4102   14.6C / 71 % - 2025-11-14 13:12:22 - Schlafz
+  Hideki_30_2
+Cresta_7903   14.8C / 66 % - 2025-11-14 13:11:39 - Andreas
+  Hideki_30_3
+Cresta_8401   19.0C / 66 % - 2025-11-14 13:11:53 - Bad
+  Hideki_30_4
+
+
+Auriol
+
+Auriol_V3_8202    7.2C / 66 % - 2025-11-10 18:00:48 - Kühlschrank Terasse
+Auriol_V3_EB02    T: 20.1 H:60                        Kühlschrank Terasse
+
+beides ist Channel 2
+
+Byte 1 = random ID, no channel information
