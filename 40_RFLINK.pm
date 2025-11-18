@@ -46,9 +46,11 @@
 
 package main;
 
-require "42_RFLINK_AURIOL_V3.pm";
-require "42_RFLINK_CRESTA.pm";
-require "42_RFLINK_XIRON.pm";
+# preload?
+#require "42_RFLINK_AURIOL_V3.pm";
+#require "42_RFLINK_CRESTA.pm";
+#require "42_RFLINK_XIRON.pm";
+#require "42_RFLINK_AB400D.pm";
 
 use strict;
 use warnings;
@@ -81,7 +83,7 @@ RFLINK_Initialize
 
   #possible Client modules
   $hash->{Clients} =
-        ":RFLINK_CRESTA:RFLINK_XIRON:RFLINK_AURIOL_V3:";
+        ":RFLINK_CRESTA:RFLINK_XIRON:RFLINK_AURIOL_V3:RFLINK_AB400D:";
 
   #Dispatch list
   # accepted inputs
@@ -99,12 +101,14 @@ RFLINK_Initialize
   # 42_RFLINK_CRESTA
   # 42 RFLINK_XIRON
   # 42_RFLINK_AURIOL_V3
+  # 42_RFLINK_AB400D
   # rest ignored
   
   my %mc = (
     "1:RFLINK_CRESTA"      => "^[0-9]{2};[0-9A-F]{2};Cresta;.*",
     "2:RFLINK_XIRON"       => "^[0-9]{2};[0-9A-F]{2};Xiron;.*", #38-78
-    "3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol_V3;.*" #"3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol V3;.*",
+    "3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol_V3;.*", #"3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol V3;.*",
+    "3:RFLINK_AB400D"      => "^[0-9]{2};[0-9A-F]{2};AB400D;.*"  # 20;C8;AB400D;ID=51;SWITCH=05;CMD=OFF;
   );
   $hash->{MatchList} = \%mc;
 
@@ -186,12 +190,26 @@ sub RFLINK_Get
 
 }
 
+sub RFLINK_SimpleWrite (@){
+  my ($hash, $msg) = @_;
+  return if(!$hash);
+
+  my $name = $hash->{NAME};
+  Debug ("$name: SimpleWrite, $msg");
+
+  $hash->{USBDev}->write($msg)    if($hash->{USBDev});
+  syswrite($hash->{TCPDev}, $msg) if($hash->{TCPDev});
+  syswrite($hash->{DIODev}, $msg) if($hash->{DIODev});
+
+  # Some linux installations are broken with 0.001, T01 returns no answer
+  select(undef, undef, undef, 0.01);
+}
+
 #####################################
-sub
-RFLINK_Write($$$)
+sub RFLINK_Write(@)
 {
   my ($hash,$fn,$msg) = @_;
-      Debug("RFLINK_Write...");
+  Debug("RFLINK_Write...fn=$fn msg=$msg");
 
   my $name = $hash->{NAME};
   my $ll5 = GetLogLevel($name,5);
@@ -202,7 +220,9 @@ RFLINK_Write($$$)
   $bstring = "$fn$msg";
   Log 5, "$hash->{NAME} sending $bstring";
 
-  DevIo_SimpleWrite($hash, $bstring, 1);
+  #call simplewrite
+  #DevIo_SimpleWrite($hash, $bstring, 1);
+  RFLINK_SimpleWrite($hash, $bstring);
 }
 
 #####################################
@@ -414,7 +434,7 @@ RFLINK_Parse($$$$)
     Debug("RFLINK_Dispatch '$rmsg'");
     my $test=$rmsg;
     
-    if ( $test =~ m/^[0-9]{2};[0-9A-F]{2};Auriol_V3;.*/ ){
+    if ( $test =~ m/^[0-9]{2};[0-9A-F]{2};AB400D;.*/ ){
       Debug("RFLINK_Dispatch regex test '$test' MATCHED");  
     }else{
       Debug("RFLINK_Dispatch regex test '$test' DOES NOT MATCH");  
@@ -449,9 +469,9 @@ RFLINK_Ready($)
   return DevIo_OpenDev($hash, 1, "RFLINK_Ready") if($hash->{STATE} eq "disconnected");
 
   # This is relevant for windows/USB only
-  my $po = $hash->{USBDev};
-  my ($BlockingFlags, $InBytes, $OutBytes, $ErrorFlags) = $po->status;
-  return ($InBytes>0);
+#  my $po = $hash->{USBDev};
+#  my ($BlockingFlags, $InBytes, $OutBytes, $ErrorFlags) = $po->status;
+#  return ($InBytes>0);
 }
 
 sub RFLINK_Attr {
