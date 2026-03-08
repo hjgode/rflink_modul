@@ -29,7 +29,9 @@ RFLINK_AURIOL_V3_Initialize($)
   
   #    20;CB;Auriol V3;ID=8202;TEMP=8.0;HUM=97; -> chn 2
   #    Auriol_V3_EB02 -> chn 2
-  
+    # NEU?
+    # 20;1A;Auriol_V3;ID=EB02;TEMP=0054;HUM=54;BAT=OK;
+
   $hash->{Match}     = "^[0-9]{2};[0-9A-F]{2};Auriol_V3;.";
   $hash->{DefFn}     = "RFLINK_AURIOL_V3_Define";
   $hash->{UndefFn}   = "RFLINK_AURIOL_V3_Undef";
@@ -79,35 +81,52 @@ sub parse_RFLINK_AURIOL_V3_msg {
   Debug("parse_RFLINK_AURIOL_V3_msg...");
   my $msg = shift;
   Debug("parse_RFLINK_AURIOL_V3_msg: msg = $msg");
-  # 20;C5;Cresta;ID=4C02;TEMP=14.6;HUM=105;BAT=LOW;
+  # 20;1A;Auriol_V3;ID=EB02;TEMP=0054;HUM=54;BAT=OK;
+  # MAYBE HEX or decimal, see TEMP= starts with 0
+  
   #my ($typ,$myName,$id,$tmp,$hum,$bat,$chn)
   my @x = split(/[;=]/, $msg);
 
   Debug("parse_RFLINK_AURIOL_V3_msg array scalar = ".scalar(@x));
-  if ( scalar(@x) != 9 ) {
+  if ( scalar(@x) != 11 ) {
     Debug ("RFLINK_AURIOL_V3: check1 failed");
     return;    
   }
   
+  # 8 08:41:26 1: DEBUG>parse_RFLINK_AURIOL_V3_msg: msg = 20;71;Auriol_V3;ID=EB02;TEMP=003e;HUM=81;BAT=OK;
+  # 2026.03.08 08:41:26 1: DEBUG>parse_RFLINK_AURIOL_V3_msg array scalar = 11
+
   my $out="";
   for (my $i=0; $i < scalar(@x); $i++){
     $out .= $i . ":" .  $x[$i] . ", ";
   }
   Debug("RFLINK_AURIOL_V3: parsed to: $out");
-  # TODO: DEBUG>RFLINK: parsed to: 0:20, 1:8D, 2:Cresta, 3:ID, 4:2001, 5:TEMP, 6:9.7, 7:HUM, 8:130, 9:BAT, 10:LOW, 11:, 
+  # TODO: 20;7E;Auriol_V3;ID=EB02;TEMP=003e;HUM=81;BAT=OK; 
+
+  # 2026.03.08 09:19:09 1: DEBUG>RFLINK_Dispatch '20;61;Auriol_V3;ID=EB02;TEMP=003e;HUM=63;BAT=OK;'
 
   my $name=$x[2];
 
   $name =~ s/ /_/; # replace blanks inside name
 
+  # $hex_val = hex($hex_string);
+  # hex doesn't require the "0x" at the beginning of the string. If it's missing it will still translate a hex string to a number.
+  
   my $id=$x[4]; # randomID, changes with every battery change, use only channel info byte 2
-  my $tmp= $x[6]; #( hex($x[6]) & hex("7FFF") * 0.1 );
-  my $hum=sprintf("%X", $x[8]); # $x[8];
-  my $bat=""; #no bat for Auriol V3
+  # substring of a fixed length
+  # $sub_string2 = substr($string, 4, 5);
+  
+  my $tmp= ( (hex($x[6]) & hex("7FFF")) * 0.1 );
+  #my $hex_temp_val = hex($tmp);
+  
+  my $hum=$x[8]; #sprintf("%X", $x[8]); # $x[8];
+  my $bat=$x[10]; #""; #no bat for Auriol V3
   # try to get the device with the name
   my $myName = $name . $id;
 
   my $chn = substr($id,2,2); #chn for Auriol V3
+
+  Debug("RFLINK_AURIOL_V3: parse_RFLINK_AURIOL_V3_msg : id=$id temp=$tmp hum=$hum bat=$bat");
   
   return ($name,$id,$tmp,$hum,$bat,$chn);
 }

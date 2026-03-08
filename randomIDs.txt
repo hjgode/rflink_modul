@@ -1,3 +1,37 @@
+NEU
+
+Oregon
+
+20;25;Oregon-1A2D;ID=2dbb;TEMP=00be;HUM=05;BAT=OK;
+
+00be => 193 * 0.1 °C = 19.3°C
+05   => 5 % ???
+
+Auriol
+
+20;1A;Auriol_V3;ID=EB02;TEMP=0054;HUM=54;BAT=OK;
+20;36;Auriol_V3;ID=EB02;TEMP=0056;HUM=53;BAT=OK;
+
+0056 => 86 * 0.1 °C = 8.6°C
+0053 => 83%
+
+VORHER: Auriol_V3_02
+
+Cresta
+Jetzt auch nur HEX!
+
+bat	LOW
+	
+2026-03-08 08:15:02
+humidity	71
+	
+2026-03-08 08:16:28
+state	T: 0023 H:71
+	
+2026-03-08 08:16:28
+temperature	0023
+
+#############
 Für channel RandomID aus ID rausrechnen
 
 Hideki_30_1   AussenTH
