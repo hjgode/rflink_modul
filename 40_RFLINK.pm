@@ -51,6 +51,7 @@ package main;
 #require "42_RFLINK_CRESTA.pm";
 #require "42_RFLINK_XIRON.pm";
 #require "42_RFLINK_AB400D.pm";
+#requirs "42_RFLINK_OREGON.pm";
 
 use strict;
 use warnings;
@@ -71,6 +72,16 @@ sub RFLINK_OpenDev($$);
 sub RFLINK_CloseDev($);
 sub RFLINK_Disconnected($);
 
+my %sets = (
+  #Command name             [FhemWeb Argument type, code to run]
+  'reset'               =>  ['noArg', \&RFLINK_Set_reset ],
+  'close'               =>  ['noArg', \&RFLINK_Set_close ]
+);
+
+my %gets = (
+  '?'                 =>  ['', \&RFLINK_Get ]
+);
+
 sub
 RFLINK_Initialize
 {
@@ -83,7 +94,7 @@ RFLINK_Initialize
 
   #possible Client modules
   $hash->{Clients} =
-        ":RFLINK_CRESTA:RFLINK_XIRON:RFLINK_AURIOL_V3:RFLINK_AB400D:";
+        ":RFLINK_CRESTA:RFLINK_XIRON:RFLINK_AURIOL_V3:RFLINK_AB400D:RFLINK_OREGON";
 
   #Dispatch list
   # accepted inputs
@@ -96,19 +107,22 @@ RFLINK_Initialize
   20;CA;Cresta;ID=2001;TEMP=9.7;HUM=104;BAT=LOW;
   20;CB;Auriol V3;ID=8202;TEMP=8.0;HUM=97;
   20;E2;Auriol V3;ID=8202;TEMP=7.1;HUM=105;
+  20;25;Oregon-1A2D;ID=2dbb;TEMP=00be;HUM=05;BAT=OK;
 =cut
   # Dispatch to
   # 42_RFLINK_CRESTA
   # 42 RFLINK_XIRON
   # 42_RFLINK_AURIOL_V3
   # 42_RFLINK_AB400D
+  # 42 RFLINK_OREGON
   # rest ignored
   
   my %mc = (
     "1:RFLINK_CRESTA"      => "^[0-9]{2};[0-9A-F]{2};Cresta;.*",
-    "2:RFLINK_XIRON"       => "^[0-9]{2};[0-9A-F]{2};Xiron;.*", #38-78
-    "3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol_V3;.*", #"3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol V3;.*",
-    "3:RFLINK_AB400D"      => "^[0-9]{2};[0-9A-F]{2};AB400D;.*"  # 20;C8;AB400D;ID=51;SWITCH=05;CMD=OFF;
+    "2:RFLINK_XIRON"       => "^[0-9]{2};[0-9A-F]{2};Xiron;.*", 	#38-78
+    "3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol_V3;.*", 	#"3:RFLINK_AURIOL_V3"   => "^[0-9]{2};[0-9A-F]{2};Auriol V3;.*",
+    "4:RFLINK_AB400D"      => "^[0-9]{2};[0-9A-F]{2};AB400D;.*",  	# 20;C8;AB400D;ID=51;SWITCH=05;CMD=OFF;
+    "5:RFLINK_OREGON"      => "^[0-9]{2};[0-9A-F]{2};Oregon-1A2D;.*" 	# 20;25;Oregon-1A2D;ID=2dbb;TEMP=00be;HUM=05;BAT=OK;
   );
   $hash->{MatchList} = \%mc;
 
@@ -120,6 +134,7 @@ RFLINK_Initialize
   $hash->{DefFn}   = "RFLINK_Define";
   $hash->{UndefFn} = "RFLINK_Undef";
   $hash->{GetFn}   = "RFLINK_Get";
+  $hash->{SetFn}   = \&RFLINK_Set;
   $hash->{StateFn} = "RFLINK_SetState";
   $hash->{AttrList}= "dummy:1,0 do_not_init:1:0 longids loglevel:0,1,2,3,4,5,6";
   $hash->{ShutdownFn} = "RFLINK_Shutdown";
@@ -184,10 +199,69 @@ sub RFLINK_Get
 
   return "\"get RFLINK\" needs at least one parameter" if(@a < 1);
 
-  return "Unknown argument $a[0], choose one of supported commands";
-
+  if (!exists($gets{$a[0]})) {
+    return "Unknown argument $a[0], choose one of supported commands";
+  }
 #  return $rcode;    # We will exit here, and give an output only, $rcode has some value
 
+}
+
+############################# package main
+sub RFLINK_Set_close {
+  my $hash = shift;
+  $hash->{DevState} = 'closed';
+  return RFLINK_CloseDevice($hash);
+}
+
+############################# package main
+sub RFLINK_CloseDevice {
+  my $hash = shift;
+
+#  $hash->{logMethod}->($hash->{NAME}, 2, "$hash->{NAME}: CloseDevice, closed");
+#  FHEM::Core::Timer::Helper::removeTimer($hash->{NAME});
+  DevIo_CloseDev($hash);
+  readingsSingleUpdate($hash, 'state', 'closed', 1);
+
+  return undef;
+}
+
+############################# package main
+sub RFLINK_Connect {
+  my ($hash, $err) = @_;
+
+  # damit wird die err-msg nur einmal ausgegeben
+  if (!defined($hash->{disConnFlag}) && $err) {
+#    $hash->{logMethod}->($hash->{NAME}, 3, "$hash->{NAME}: Connect, ${err}");
+    $hash->{disConnFlag} = 1;
+  }
+}
+
+############################# package main
+sub RFLINK_Set_reset
+{
+  my $hash = shift;
+  delete($hash->{initResetFlag}) if defined($hash->{initResetFlag});
+  return RFLINK_ResetDevice($hash);
+}
+
+############################# package main
+sub RFLINK_ResetDevice {
+  my $hash = shift;
+  my $name = $hash->{NAME};
+
+  if (!defined($hash->{helper}{resetInProgress})) {
+    if (IsDummy($name)) { # for dummy device
+      $hash->{DevState} = 'initialized';
+      readingsSingleUpdate($hash, 'state', 'opened', 1);
+      return undef;
+    }
+
+    DevIo_CloseDev($hash);
+  } else {
+    delete($hash->{helper}{resetInProgress});
+  }
+  DevIo_OpenDev($hash, 0, \&RFLINK_DoInit, \&RFLINK_Connect);
+  return undef;
 }
 
 sub RFLINK_SimpleWrite (@){
@@ -256,6 +330,27 @@ RFLINK_Shutdown($)
       Debug("RFLINK_Shutdown...");
 
   return undef;
+}
+
+
+############################# package main, test exists
+sub RFLINK_Set {
+  my ($hash, $name, $cmd, @args) = @_;
+
+  #return "\"set RFLINK\" needs at least one parameter" if(@a < 1);
+
+  if ($cmd eq "?"){
+    return "unknown argument [Parameter] choose one of close reset"
+  }
+  elsif ($cmd eq "reset") {
+    return RFLINK_Set_reset($hash);
+  }
+  elsif($cmd eq "close"){
+    return RFLINK_Set_close($hash);   
+  }
+  else{
+    return "Unknown argument $cmd, choose one of supported commands";
+  }
 }
 
 #####################################
@@ -435,9 +530,9 @@ RFLINK_Parse($$$$)
     my $test=$rmsg;
     
     if ( $test =~ m/^[0-9]{2};[0-9A-F]{2};AB400D;.*/ ){
-      Debug("RFLINK_Dispatch regex test '$test' MATCHED");  
+      Debug("RFLINK_Dispatch regex test '$test' MATCHED AB400D");  
     }else{
-      Debug("RFLINK_Dispatch regex test '$test' DOES NOT MATCH");  
+      Debug("RFLINK_Dispatch regex test '$test' DOES NOT MATCH AB400D");  
     }
 
     Debug("RFLINK Dispatch: $hash, $rmsg");
@@ -495,6 +590,7 @@ RFLink Startup communication example:
 20;06;NewKaku;ID=008440e6;SWITCH=a;CMD=OFF;
 20;07;AB400D;ID=41;SWITCH=1;CMD=ON;
 20;08;SilvercrestDB;ID=04d6bb97;SWITCH=1;CMD=ON;CHIME=01;
+20;25;Oregon-1A2D;ID=2dbb;TEMP=00be;HUM=05;BAT=OK;
 .....
 Packet structure - RFlink describing data received from RF:
 
